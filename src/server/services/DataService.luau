@@ -3,6 +3,8 @@
 -- Modules
 local updateCharacterModule = game.ReplicatedStorage.Functions.UpdateCharacter
 local types = require(game.ReplicatedStorage.Functions.Types)
+local getCharacterData = require(game.ReplicatedStorage.Functions.GetCharacterData)
+local playerCombatStateService = require(game.ServerScriptService.Services.PlayerCombatStateService)
 
 -- Data Stores
 local dataStoreService = game:GetService('DataStoreService')
@@ -66,22 +68,60 @@ private.checkData = function(player : Player) : boolean
 	return false
 end
 
+private.updatePlayerStats = function(player : Player, characterData)
+	local character = player.Character :: Model
+	local humanoid = character:FindFirstChild('Humanoid') :: Humanoid
+	humanoid.Health = characterData.Super.Stats.Health
+	humanoid.WalkSpeed = characterData.Super.Stats.WalkSpeed
+end
+
+private.updatePlayerAnimations = function(player : Player, characterData)
+	local character = player.Character :: Model
+	local animateScript = character:WaitForChild('Animate')
+	local walkAnimation = animateScript:FindFirstChild('walk'):FindFirstChild('WalkAnim') :: Animation
+	local runAnimation = animateScript:FindFirstChild('run'):FindFirstChild('RunAnim') :: Animation
+	local jumpAnimation = animateScript:FindFirstChild('jump'):FindFirstChild('JumpAnim') :: Animation
+	local fallAnimation = animateScript:FindFirstChild('fall'):FindFirstChild('FallAnim') :: Animation
+	local idleAnimation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation1') :: Animation
+	local idle2Animation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation2') :: Animation
+	walkAnimation.AnimationId = characterData.Super.Animations.General[1].Walk.AnimationId
+	runAnimation.AnimationId = characterData.Super.Animations.General[1].Walk.AnimationId
+	jumpAnimation.AnimationId = characterData.Super.Animations.General[1].Jump.AnimationId
+	fallAnimation.AnimationId = characterData.Super.Animations.General[1].Fall.AnimationId
+	idleAnimation.AnimationId = characterData.Super.Animations.General[1].Idle.AnimationId
+	idle2Animation.AnimationId = characterData.Super.Animations.General[1].Idle.AnimationId
+end
+
+private.startPlayer = function(player : Player)
+	player.CharacterAdded:Connect(function()
+		private.retrieveDataStore(player)
+		local characterData = getCharacterData(player) 
+		local character = player.Character :: Model
+		local humanoid = character:FindFirstChild('Humanoid') :: Humanoid
+		humanoid.Health = characterData.Super.Stats.Health
+		humanoid.WalkSpeed = characterData.Super.Stats.WalkSpeed
+		humanoid.JumpHeight = characterData.Super.Stats.JumpHeight
+		private.updatePlayerAnimations(player, characterData)
+		updateCharacterEvent:FireClient(player, characterData)
+		playerCombatStateService.getState(player)
+	end)
+end
+
 public.onStart = function()
-	updateCharacterEvent.OnServerEvent:Connect(function(player : Player, characterName : types.characterName)
+	local data;
+	updateCharacterEvent.OnServerEvent:Connect(function(player : Player, characterData)
+		data = characterData;
 		local selectedCharacter = player:FindFirstChild("SelectedCharacter") :: StringValue
-
-		if not selectedCharacter then
-			warn("SelectedCharacter not found for player:", player.Name)
-			return
-		end
-
-		if selectedCharacter.Value ~= characterName then
+		if selectedCharacter.Value ~= characterData.Super.Stats.Name then
 			player:LoadCharacter()
-			selectedCharacter.Value = characterName
-			updateCharacterEvent:FireClient(player, characterName)
+			selectedCharacter.Value = characterData.Super.Stats.Name
+			private.updatePlayerStats(player, characterData)
+			private.updatePlayerAnimations(player, characterData)
+			updateCharacterEvent:FireClient(player, characterData)
 		end
 	end)
-	game.Players.PlayerAdded:Connect(private.retrieveDataStore);
+	
+	game.Players.PlayerAdded:Connect(private.startPlayer)
 	game.Players.PlayerRemoving:Connect(private.saveDataStore);
 end
 
