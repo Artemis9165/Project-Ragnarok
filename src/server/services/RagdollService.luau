@@ -1,7 +1,7 @@
 --!strict
 local ragdollData = require(game.ReplicatedStorage.Functions.Offsets)
 local npcService = require(game.ServerScriptService.Services.NPCService)
-local ragdollEvent = game.ReplicatedStorage.Events.RagdollEvent
+local ragdollEvent = game.ReplicatedStorage.RemoteEvents.RagdollEvent
 
 local private = {}
 local public = {}
@@ -79,7 +79,7 @@ private.destroyJoints = function(character : Model)
 	end
 end
 
-public.unragdollCharacter = function(character : Model, getUpState : number?)
+public.unragdollCharacter = function(character : Model)
 	local player : Player = game.Players:GetPlayerFromCharacter(character)
 	local humanoid = character:FindFirstChildOfClass('Humanoid') :: Humanoid
 	local humanoidRootPart = character:FindFirstChild('HumanoidRootPart') :: BasePart

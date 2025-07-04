@@ -1,10 +1,10 @@
 --!strict
 
 -- Modules
-local updateCharacterModule = game.ReplicatedStorage.Functions.UpdateCharacter
 local types = require(game.ReplicatedStorage.Functions.Types)
-local getCharacterData = require(game.ReplicatedStorage.Functions.GetCharacterData)
-local playerCombatStateService = require(game.ServerScriptService.Services.PlayerCombatStateService)
+local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
+local animationFunction = require(game.ReplicatedStorage.Functions.AnimationFunction)
+local playerCombatStateFunction = require(game.ReplicatedStorage.Functions.PlayerStateFunction)
 
 -- Data Stores
 local dataStoreService = game:GetService('DataStoreService')
@@ -12,7 +12,7 @@ local totalKillsDataStore = dataStoreService:GetDataStore('TotalKills')
 local selectedCharacterDataStore = dataStoreService:GetDataStore('SelectedCharacter')
 
 -- Remotes
-local updateCharacterEvent = game.ReplicatedStorage.Events.UpdateCharacter
+local updateCharacterEvent = game.ReplicatedStorage.RemoteEvents.UpdateCharacter
 
 local private = {}
 local public = {}
@@ -37,7 +37,7 @@ private.retrieveDataStore = function(player : Player)
 		local storedTotalKills = totalKillsDataStore:GetAsync(player.UserId)
 		local storedSelectedCharacter = selectedCharacterDataStore:GetAsync(player.UserId)
 		local leaderStats = player:FindFirstChild('leaderstats') :: Folder
-		local selectedCharacter = player:FindFirstChild("SelectedCharacter") :: StringValue
+		local selectedCharacter = player:FindFirstChild('SelectedCharacter') :: StringValue
 		local totalKills = leaderStats:FindFirstChild('Total Kills') :: NumberValue
 		if storedTotalKills then
 			totalKills.Value = storedTotalKills
@@ -51,11 +51,11 @@ end
 
 private.saveDataStore = function(player : Player)
 	local leaderStats = player:FindFirstChild('leaderstats') :: Folder
-	local selectedCharacter = player:FindFirstChild("SelectedCharacter") :: StringValue
+	local selectedCharacter = getSelectedCharacterFunction.getSelectedCharacterName(player) :: string
 	local totalKills = leaderStats:FindFirstChild('Total Kills') :: NumberValue
 	local success, errorMessage = pcall(function()
 		totalKillsDataStore:SetAsync(player.UserId, totalKills.Value)
-		selectedCharacterDataStore:SetAsync(player.UserId, selectedCharacter.Value)		
+		selectedCharacterDataStore:SetAsync(player.UserId, selectedCharacter)		
 	end)
 end
 
@@ -68,14 +68,7 @@ private.checkData = function(player : Player) : boolean
 	return false
 end
 
-private.updatePlayerStats = function(player : Player, characterData)
-	local character = player.Character :: Model
-	local humanoid = character:FindFirstChild('Humanoid') :: Humanoid
-	humanoid.Health = characterData.Super.Stats.Health
-	humanoid.WalkSpeed = characterData.Super.Stats.WalkSpeed
-end
-
-private.updatePlayerAnimations = function(player : Player, characterData)
+private.updatePlayerAnimations = function(player : Player)
 	local character = player.Character :: Model
 	local animateScript = character:WaitForChild('Animate')
 	local walkAnimation = animateScript:FindFirstChild('walk'):FindFirstChild('WalkAnim') :: Animation
@@ -84,45 +77,46 @@ private.updatePlayerAnimations = function(player : Player, characterData)
 	local fallAnimation = animateScript:FindFirstChild('fall'):FindFirstChild('FallAnim') :: Animation
 	local idleAnimation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation1') :: Animation
 	local idle2Animation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation2') :: Animation
-	walkAnimation.AnimationId = characterData.Super.Animations.General[1].Walk.AnimationId
-	runAnimation.AnimationId = characterData.Super.Animations.General[1].Walk.AnimationId
-	jumpAnimation.AnimationId = characterData.Super.Animations.General[1].Jump.AnimationId
-	fallAnimation.AnimationId = characterData.Super.Animations.General[1].Fall.AnimationId
-	idleAnimation.AnimationId = characterData.Super.Animations.General[1].Idle.AnimationId
-	idle2Animation.AnimationId = characterData.Super.Animations.General[1].Idle.AnimationId
+
+	local selectedCharacterName = getSelectedCharacterFunction.getSelectedCharacterName(player) :: string
+	local selectedCharacterAnimationFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
+	local selectedCharacterGeneralAnimationFolder = selectedCharacterAnimationFolder:FindFirstChild('General') :: Folder
+	local selectedCharacterWalkAnimation = selectedCharacterGeneralAnimationFolder:FindFirstChild('Walk') :: Animation
+	local selectedCharacterIdleAnimation = selectedCharacterGeneralAnimationFolder:FindFirstChild('Idle') :: Animation
+
+	walkAnimation.AnimationId = selectedCharacterWalkAnimation.AnimationId
+	runAnimation.AnimationId = selectedCharacterWalkAnimation.AnimationId
+	jumpAnimation.AnimationId = game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.Other.Jump.AnimationId
+	fallAnimation.AnimationId = game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.Other.Fall.AnimationId
+	idleAnimation.AnimationId = selectedCharacterIdleAnimation.AnimationId
+	idle2Animation.AnimationId = selectedCharacterIdleAnimation.AnimationId
 end
 
-private.startPlayer = function(player : Player)
+private.startPlayer = function(player : Player, characterName : types.characterName)
 	player.CharacterAdded:Connect(function()
 		private.retrieveDataStore(player)
-		local characterData = getCharacterData(player) 
-		local character = player.Character :: Model
-		local humanoid = character:FindFirstChild('Humanoid') :: Humanoid
-		humanoid.Health = characterData.Super.Stats.Health
-		humanoid.WalkSpeed = characterData.Super.Stats.WalkSpeed
-		humanoid.JumpHeight = characterData.Super.Stats.JumpHeight
-		private.updatePlayerAnimations(player, characterData)
-		updateCharacterEvent:FireClient(player, characterData)
-		playerCombatStateService.getState(player)
+		local character = player.Character or player.CharacterAdded:Wait() :: Model
+		local humanoid = character:WaitForChild('Humanoid') :: Humanoid
+		humanoid.Health = 100
+		humanoid.WalkSpeed = 16
+		humanoid.JumpHeight = 7.2
+		private.updatePlayerAnimations(player)
 	end)
 end
 
 public.onStart = function()
-	local data;
-	updateCharacterEvent.OnServerEvent:Connect(function(player : Player, characterData)
-		data = characterData;
-		local selectedCharacter = player:FindFirstChild("SelectedCharacter") :: StringValue
-		if selectedCharacter.Value ~= characterData.Super.Stats.Name then
+	updateCharacterEvent.OnServerEvent:Connect(function(player : Player, characterName : types.characterName)
+		local selectedCharacter = getSelectedCharacterFunction.getSelectedCharacterName(player) :: string
+		if selectedCharacter ~= characterName then
 			player:LoadCharacter()
-			selectedCharacter.Value = characterData.Super.Stats.Name
-			private.updatePlayerStats(player, characterData)
-			private.updatePlayerAnimations(player, characterData)
-			updateCharacterEvent:FireClient(player, characterData)
+			selectedCharacter = characterName
+			private.updatePlayerAnimations(player)
+			updateCharacterEvent:FireClient(player, characterName)
 		end
 	end)
-	
+
 	game.Players.PlayerAdded:Connect(private.startPlayer)
-	game.Players.PlayerRemoving:Connect(private.saveDataStore);
+	game.Players.PlayerRemoving:Connect(private.saveDataStore)
 end
 
 public.getData = function(player : Player)

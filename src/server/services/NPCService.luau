@@ -1,5 +1,5 @@
 --!strict
-local npcFunction = game.ReplicatedStorage.Events.NPCFunction
+local npcFunction = game.ReplicatedStorage.RemoteFunctions.NPCFunction
 local private = {}
 local public = {}
 
