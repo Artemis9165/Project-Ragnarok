@@ -12,12 +12,13 @@ local movementController = require(game.StarterPlayer.StarterPlayerScripts.Contr
 local npcFunction = game.ReplicatedStorage.RemoteFunctions.NPCFunction
 local ragdollEvent = game.ReplicatedStorage.RemoteEvents.RagdollEvent
 local knockbackEvent = game.ReplicatedStorage.RemoteEvents.KnockbackEvent
+local hurtEvent = game.ReplicatedStorage.RemoteEvents.HurtEvent
 
 local private = {}
 local public = {}
 
 private.m1Data = {
-	damage = 3,
+	damage = 30,
 	slamDamage = 5,
 	uppercutDamage = 4,
 	timeBetweenCombos = 0.75,
@@ -138,43 +139,42 @@ private.destroyEnviroment = function(character : Model, impactPosition : Vector3
 	end
 end
 
-private.triggerHit = function(player : Player, otherCharacter : Model, damage : number, comboCount : number, forwardDash : boolean?)
-
-end
-
-private.m1 = function(inputObject : InputObject, player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart)
-	if inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 
-		or playerStateFunction.getState(player, 'combat', 'hurting') 
-		or playerStateFunction.getState(player, 'combat', 'attacking') 
+private.shouldBlockM1 = function(inputObject: InputObject, player: Player): boolean
+	return inputObject.UserInputType ~= Enum.UserInputType.MouseButton1
+		or playerStateFunction.getState(player, 'combat', 'hurting')
+		or playerStateFunction.getState(player, 'combat', 'attacking')
 		or playerStateFunction.getState(player, 'combat', 'blocking')
 		or playerStateFunction.getState(player, 'combat', 'comboCooldown')
-		or playerStateFunction.getState(player, 'combat', 'attackDebounce') 
+		or playerStateFunction.getState(player, 'combat', 'attackDebounce')
 		or playerStateFunction.getState(player, 'misc', 'dashing')
-		or playerStateFunction.getState(player, 'combat', 'comboCount') > 4	then 
-		return 
+		or playerStateFunction.getState(player, 'combat', 'comboCount') > 4
+end
+
+private.resetComboIfTimeout = function(player: Player)
+	if tick() - playerStateFunction.getState(player, 'combat', 'lastComboTime') > private.m1Data.comboResetTime then
+		playerStateFunction.setState(player, 'combat', 'comboCount', 1)
 	end
+end
+
+private.disableSprint = function(player : Player, humanoid : Humanoid)
 	if animationFunction.isAnimationPlaying(player, 'Sprint') then
 		humanoid.WalkSpeed = 16
 		animationFunction.stopAnimation(player, 'Sprint')
 	end
-	
-	if tick() - playerStateFunction.getState(player, 'combat', 'lastComboTime') > private.m1Data.comboResetTime then
-		playerStateFunction.setState(player, 'combat', 'comboCount', 1)
-	end
-	
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-	playerStateFunction.setState(player, 'combat', 'lastComboTime', tick())
-	playerStateFunction.setState(player, 'combat', 'attackDebounce', true)
-	
-	local animationName
-	if humanoid:GetState() == Enum.HumanoidStateType.Freefall and playerStateFunction.getState(player, 'combat', 'comboCount') == 4 then
-		animationName = "Slam"
-	elseif userInputService:IsKeyDown(Enum.KeyCode.Space) and playerStateFunction.getState(player, 'combat', 'comboCount') == 4 then
-		animationName = "Uppercut"
-	else
-		animationName = tostring(playerStateFunction.getState(player, 'combat', 'comboCount'))
-	end
-	
+end
+
+private.getComboAnimationName = function(humanoid: Humanoid, player: Player): string
+	local comboCount = playerStateFunction.getState(player, 'combat', 'comboCount')
+	if humanoid:GetState() == Enum.HumanoidStateType.Freefall and comboCount == 4 then return "Slam" end
+	if userInputService:IsKeyDown(Enum.KeyCode.Space) and comboCount == 4 then return "Uppercut" end
+	return tostring(comboCount)
+end
+
+private.triggerHit = function(player : Player, otherCharacter : Model, damage : number, comboCount : number)
+	hurtEvent:FireServer(otherCharacter, damage, comboCount)
+end
+
+private.handleAttackAnimation = function(player: Player, character: Model, humanoidRootPart: BasePart, animationName: string)
 	animationFunction.playAnimation(player, animationName, false)
 	
 	local parts
@@ -183,7 +183,7 @@ private.m1 = function(inputObject : InputObject, player : Player, character : Mo
 	else
 		parts = private.getTargetRegion3(character, humanoidRootPart, private.m1Data.regularAreaOfEffect, 3)
 	end
-
+	
 	local otherCharacter = private.getOtherCharacter(parts)
 	if otherCharacter and private.detectHumanoid(parts) then
 		if animationName == "Slam" then
@@ -191,21 +191,22 @@ private.m1 = function(inputObject : InputObject, player : Player, character : Mo
 		elseif animationName == "Uppercut" then
 			--private.uppercut(otherCharacter)
 		else
-			--private.triggerHit(otherCharacter, m1.damage, playerState.comboCount)
+			private.triggerHit(player, otherCharacter, private.m1Data.damage, playerStateFunction.getState(player, 'combat', 'comboCount'))
 		end
 	end
+end
 
+private.handlePostAnimation = function(player: Player, humanoid: Humanoid, animationName: string)
 	animationFunction.stopped(player, animationName, function()
-		task.delay(1.15, function()
-			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-		end)
+		task.delay(1.15, function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end)
 		playerStateFunction.setState(player, 'combat', 'attackDebounce', false)
 	end)
+end
 
-
-	playerStateFunction.setState(player, 'combat', 'comboCount', playerStateFunction.getState(player, 'combat', 'comboCount') + 1)
-	
-	if playerStateFunction.getState(player, 'combat', 'comboCount') > 4 then
+private.incrementCombo = function(player: Player)
+	local newCount = playerStateFunction.getState(player, 'combat', 'comboCount') + 1
+	playerStateFunction.setState(player, 'combat', 'comboCount', newCount)
+	if newCount > 4 then
 		playerStateFunction.setState(player, 'combat', 'comboCooldown', true)
 		task.delay(private.m1Data.comboResetTime, function()
 			playerStateFunction.setState(player, 'combat', 'comboCount', 1)
@@ -213,6 +214,20 @@ private.m1 = function(inputObject : InputObject, player : Player, character : Mo
 		end)
 	end
 end
+
+private.m1 = function(inputObject: InputObject, player: Player, character: Model, humanoid: Humanoid, humanoidRootPart: BasePart)
+	if private.shouldBlockM1(inputObject, player) then return end
+	private.disableSprint(player, humanoid)
+	private.resetComboIfTimeout(player)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	playerStateFunction.setState(player, 'combat', 'lastComboTime', tick())
+	playerStateFunction.setState(player, 'combat', 'attackDebounce', true)
+	local animationName = private.getComboAnimationName(humanoid, player)
+	private.handleAttackAnimation(player, character, humanoidRootPart, animationName)
+	private.handlePostAnimation(player, humanoid, animationName)
+	private.incrementCombo(player)
+end
+
 
 private.initalizeAnimations = function(player : Player)
 	local animationsFolder = game.ReplicatedStorage:FindFirstChild('CharacterData'):FindFirstChild('Animations') :: Folder

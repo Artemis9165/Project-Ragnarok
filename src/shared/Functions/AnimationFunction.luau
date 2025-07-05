@@ -3,10 +3,10 @@
 local private = {}
 local public = {}
 
-private.savedAnimations = {} :: {[Player] : {[string] : Animation }}
-private.loadedAnimations = {} :: {[Player] : {[string] : AnimationTrack}}
+private.playerSavedAnimations = {} :: {[Player] : {[string] : Animation }}
+private.playerLoadedAnimations = {} :: {[Player] : {[string] : AnimationTrack}}
 
-private.getAnimator = function(player : Player) : Animator
+private.getAnimatorFromPlayer = function(player : Player) : Animator
 	local character = player.Character or player.CharacterAdded:Wait() :: Model
 	local humanoid = character:WaitForChild('Humanoid') :: Humanoid
 	local animator = humanoid:WaitForChild("Animator") :: Animator
@@ -14,11 +14,11 @@ private.getAnimator = function(player : Player) : Animator
 end
 
 private.clearSavedAnimations = function(player : Player)
-	private.savedAnimations[player] = {}
+	private.playerSavedAnimations[player] = {}
 end
 
 private.clearLoadedAnimations = function(player : Player)
-	private.loadedAnimations[player] = {}
+	private.playerLoadedAnimations[player] = {}
 end
 
 private.clearAnimations = function(player : Player)
@@ -27,17 +27,17 @@ private.clearAnimations = function(player : Player)
 end
 
 public.createAnimationProfile = function(player : Player)
-	if not private.savedAnimations[player] then
-		private.savedAnimations[player] = {}
-		private.loadedAnimations[player] = {}
+	if not private.playerSavedAnimations[player] then
+		private.playerSavedAnimations[player] = {}
+		private.playerLoadedAnimations[player] = {}
 	end
 end
 
 public.addAnimation = function(player : Player, animation : Animation)
-	local animator = private.getAnimator(player) :: Animator
+	local animator = private.getAnimatorFromPlayer(player) :: Animator
 	if not animation.AnimationId or animation.AnimationId == '' then return end
-	private.savedAnimations[player][animation.Name] = animation
-	private.loadedAnimations[player][animation.Name] = animator:LoadAnimation(animation)
+	private.playerSavedAnimations[player][animation.Name] = animation
+	private.playerLoadedAnimations[player][animation.Name] = animator:LoadAnimation(animation)
 end
 
 public.addMultipleAnimations = function(player : Player, ... : Animation)
@@ -64,38 +64,38 @@ public.addAnimationsFromMultipleFolders = function(player : Player, ... : Folder
 end
 
 public.playAnimation = function(player : Player, animationName : string, looped : boolean, priority : Enum.AnimationPriority?)
-	private.loadedAnimations[player][animationName].Looped = looped
-	private.loadedAnimations[player][animationName].Priority = priority or Enum.AnimationPriority.Action
-	private.loadedAnimations[player][animationName]:Play()
+	private.playerLoadedAnimations[player][animationName].Looped = looped
+	private.playerLoadedAnimations[player][animationName].Priority = priority or Enum.AnimationPriority.Action
+	private.playerLoadedAnimations[player][animationName]:Play()
 end
 
 public.isAnimationPlaying = function(player : Player, animationName : string)
-	return private.loadedAnimations[player][animationName].IsPlaying
+	return private.playerLoadedAnimations[player][animationName].IsPlaying
 end
 
 public.reloadAnimations = function(player : Player)
-	local animator = private.getAnimator(player)
+	local animator = private.getAnimatorFromPlayer(player)
 	private.clearLoadedAnimations(player)
-	for _, animation in private.savedAnimations[player] do
-		private.loadedAnimations[player][animation.Name] = animator:LoadAnimation(animation)
+	for _, animation in private.playerSavedAnimations[player] do
+		private.playerLoadedAnimations[player][animation.Name] = animator:LoadAnimation(animation)
 	end
 end
 
 public.getAnimationDuration = function(player : Player, animationName: string)
-	return private.loadedAnimations[player][animationName].Length
+	return private.playerLoadedAnimations[player][animationName].Length
 end
 
 public.stopAnimation = function(player : Player, animationName : string)
-	local anim = private.loadedAnimations[player][animationName]
+	local anim = private.playerLoadedAnimations[player][animationName]
 	if anim then anim:Stop() end
 end
 
 public.stopped = function(player : Player, animationName : string, functionParameter : () -> ())
-	private.loadedAnimations[player][animationName].Stopped:Connect(functionParameter)
+	private.playerLoadedAnimations[player][animationName].Stopped:Connect(functionParameter)
 end
 
 public.ended = function(player : Player, animationName : string, functionParameter : () -> ())
-	private.loadedAnimations[player][animationName].Ended:Connect(functionParameter)
+	private.playerLoadedAnimations[player][animationName].Ended:Connect(functionParameter)
 end
 
 return public

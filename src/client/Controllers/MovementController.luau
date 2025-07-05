@@ -17,7 +17,7 @@ local sprintTick = 0 :: number
 local dashKey = Enum.KeyCode.Q :: Enum.KeyCode
 local dashCooldown = 1.5 :: number
 
-local dashValues = {
+private.dashValues = {
 	canDash = true,
 	canForwardDash = true,
 	canBackDash = true,
@@ -110,7 +110,7 @@ end
 private.triggerDash = function(player : Player, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, dashType : string)
 	private.playerFaceAwayCamera(humanoidRootPart, camera)
 	playerStateFunction.setState(player, 'misc', "dashing", true)
-	dashValues.canDash = false
+	private.dashValues.canDash = false
 	local moveable = true
 	if not private.detectShiftLock(player) then
 		humanoid.AutoRotate = false
@@ -120,31 +120,31 @@ private.triggerDash = function(player : Player, humanoid : Humanoid, humanoidRoo
 	local animationDuration = animationFunction.getAnimationDuration(player, dashType)
 	private.disableJump(humanoid, animationDuration)
 	if dashType == 'ForwardDash' then
-		dashValues.canForwardDash = false
+		private.dashValues.canForwardDash = false
 		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(0, 0, -1), 50, animationDuration - 0.8, moveable)
 		task.delay(animationDuration + 2, function()
-			dashValues.canForwardDash = true
+			private.dashValues.canForwardDash = true
 		end)
 	end
 	if dashType == 'Back' then
 		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(0, 0, 1), 50, animationDuration, moveable)
-		dashValues.canBackDash = false
+		private.dashValues.canBackDash = false
 		task.delay(animationDuration + 3, function()
-			dashValues.canBackDash = true
+			private.dashValues.canBackDash = true
 		end)
 	end
 	if dashType == 'Left' then
 		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(-1, 0, 0), 50, animationDuration, moveable)
-		dashValues.canSideDash = false
+		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
-			dashValues.canSideDash = true
+			private.dashValues.canSideDash = true
 		end)
 	end
 	if dashType == 'Right' then
 		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(1, 0, 0), 50, animationDuration, moveable)
-		dashValues.canSideDash = false
+		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
-			dashValues.canSideDash = true
+			private.dashValues.canSideDash = true
 		end)
 	end
 	
@@ -154,21 +154,21 @@ private.triggerDash = function(player : Player, humanoid : Humanoid, humanoidRoo
 	
 	task.delay(animationDuration, function()
 		humanoid.AutoRotate = true
-		dashValues.canDash = true
+		private.dashValues.canDash = true
 	end)
 end
 
 private.dash = function(player : Player, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, inputObject: InputObject)
-	if inputObject.KeyCode == dashKey and dashValues.canDash then
-		if userInputService:IsKeyDown(Enum.KeyCode.W) and dashValues.canForwardDash then
+	if inputObject.KeyCode == dashKey and private.dashValues.canDash then
+		if userInputService:IsKeyDown(Enum.KeyCode.W) and private.dashValues.canForwardDash then
 			private.triggerDash(player, humanoid, humanoidRootPart, camera, "ForwardDash")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.S) and dashValues.canBackDash then
+		elseif userInputService:IsKeyDown(Enum.KeyCode.S) and private.dashValues.canBackDash then
 			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Back")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.A) and dashValues.canSideDash then
+		elseif userInputService:IsKeyDown(Enum.KeyCode.A) and private.dashValues.canSideDash then
 			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Left")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.D) and dashValues.canSideDash then
+		elseif userInputService:IsKeyDown(Enum.KeyCode.D) and private.dashValues.canSideDash then
 			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Right")
-		elseif dashValues.canForwardDash and humanoid.MoveDirection.Magnitude == 0 then
+		elseif private.dashValues.canForwardDash and humanoid.MoveDirection.Magnitude == 0 then
 			private.triggerDash(player, humanoid, humanoidRootPart, camera, "ForwardDash")
 		end
 	end
