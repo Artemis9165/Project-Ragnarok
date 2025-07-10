@@ -85,7 +85,7 @@ public.unragdollCharacter = function(character : Model)
 	local humanoidRootPart = character:FindFirstChild('HumanoidRootPart') :: BasePart
 	
 	if player then
-		ragdollEvent:FireClient('unragdoll')
+		ragdollEvent:FireClient(player, 'unragdoll', humanoid)
 	else
 		humanoidRootPart:SetNetworkOwner(nil)
 		if humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
@@ -107,7 +107,7 @@ public.ragdollCharacter = function(character : Model, duration : number?)
 	private.buildJoints(character)
 	private.enableCollisionPoints(character, true)
 	if player then
-		ragdollEvent:FireClient('ragdoll')
+		ragdollEvent:FireClient(player, 'ragdoll', humanoid)
 	else
 		humanoidRootPart:SetNetworkOwner(nil)
 		humanoid.AutoRotate = false
@@ -122,13 +122,7 @@ public.ragdollCharacter = function(character : Model, duration : number?)
 	coroutine.resume(private.ragdollTimers[character])
 end
 
-public.onStart = function()
-	for i, v in pairs(npcService.detectNPCs()) do
-		local humanoid = v:WaitForChild('Humanoid') :: Humanoid
-		private.setupHumanoid(humanoid)
-		private.buildCollisionParts(v)
-	end
-	
+private.setupPlayers = function()
 	game.Players.PlayerAdded:Connect(function(player : Player)
 		player.CharacterAdded:Connect(function(character : Model)
 			local humanoid = character:WaitForChild('Humanoid') :: Humanoid
@@ -136,7 +130,20 @@ public.onStart = function()
 			private.buildCollisionParts(character)
 		end)
 	end)
-	
+end
+
+private.setupNPCs = function()
+	workspace.Rigs.Dummies.ChildAdded:Connect(function(dummy : Model)
+		local humanoid = dummy:WaitForChild('Humanoid') :: Humanoid
+		private.setupHumanoid(humanoid)
+		private.buildCollisionParts(dummy)
+	end)
+
+end
+
+public.onStart = function()
+	private.setupPlayers()
+	private.setupNPCs()
 	ragdollEvent.OnServerEvent:Connect(function(player : Player, character : Model, duration : number?)
 		public.ragdollCharacter(character, duration)
 	end)

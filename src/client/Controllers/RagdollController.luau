@@ -10,6 +10,7 @@ public.onStart = function()
 		elseif type == 'unragdoll' then
 			if humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
 			humanoid.PlatformStand = false
+			humanoid.AutoRotate = true
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end

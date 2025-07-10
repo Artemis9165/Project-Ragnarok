@@ -40,7 +40,7 @@ public.detectNPCs = function() : {Model}
 end
 
 public.onStart = function()
-	private.spawnNPC()
+	task.delay(0.25, private.spawnNPC)
 	npcFunction.OnServerInvoke = function(player)
 		return public.detectNPCs()
 	end

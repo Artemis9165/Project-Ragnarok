@@ -13,12 +13,13 @@ local npcFunction = game.ReplicatedStorage.RemoteFunctions.NPCFunction
 local ragdollEvent = game.ReplicatedStorage.RemoteEvents.RagdollEvent
 local knockbackEvent = game.ReplicatedStorage.RemoteEvents.KnockbackEvent
 local hurtEvent = game.ReplicatedStorage.RemoteEvents.HurtEvent
+local destroyEnviromentEvent = game.ReplicatedStorage.RemoteEvents.DestroyEnviromentEvent
 
 local private = {}
 local public = {}
 
 private.m1Data = {
-	damage = 30,
+	damage = 3,
 	slamDamage = 5,
 	uppercutDamage = 4,
 	timeBetweenCombos = 0.75,
@@ -113,33 +114,7 @@ private.getTargetRegion3 = function(character : Model, humanoidRootPart : BasePa
 	return parts
 end
 
-private.destroyEnviroment = function(character : Model, impactPosition : Vector3, areaDestroyed : Vector3)
-	local region = Region3.new(
-		impactPosition - areaDestroyed,
-		impactPosition + areaDestroyed
-	)
-	local environmentParts = workspace:FindPartsInRegion3(region, character, 50)
-	for _, part in ipairs(environmentParts) do
-		if collectionService:HasTag(part, 'Breakable') then
-			local originalCFrame = part.CFrame
-			local originalAnchored = part.Anchored
-			local originalParent = part.Parent
-			part.Anchored = false
-			part:BreakJoints()
-			part.Velocity = Vector3.new(math.random(-20, 20), math.random(20, 40), math.random(-20, 20))
-			task.delay(3, function()
-				if part and part:IsDescendantOf(workspace) then
-					part.Anchored = originalAnchored
-					part.CFrame = originalCFrame
-					part.Velocity = Vector3.zero
-					part.RotVelocity = Vector3.zero
-				end
-			end)
-		end
-	end
-end
-
-private.shouldBlockM1 = function(inputObject: InputObject, player: Player): boolean
+private.shouldBlockM1 = function(inputObject : InputObject, player : Player) : boolean
 	return inputObject.UserInputType ~= Enum.UserInputType.MouseButton1
 		or playerStateFunction.getState(player, 'combat', 'hurting')
 		or playerStateFunction.getState(player, 'combat', 'attacking')
@@ -150,7 +125,7 @@ private.shouldBlockM1 = function(inputObject: InputObject, player: Player): bool
 		or playerStateFunction.getState(player, 'combat', 'comboCount') > 4
 end
 
-private.resetComboIfTimeout = function(player: Player)
+private.resetComboIfTimeout = function(player : Player)
 	if tick() - playerStateFunction.getState(player, 'combat', 'lastComboTime') > private.m1Data.comboResetTime then
 		playerStateFunction.setState(player, 'combat', 'comboCount', 1)
 	end
@@ -163,18 +138,14 @@ private.disableSprint = function(player : Player, humanoid : Humanoid)
 	end
 end
 
-private.getComboAnimationName = function(humanoid: Humanoid, player: Player): string
+private.getComboAnimationName = function(humanoid : Humanoid, player : Player) : string
 	local comboCount = playerStateFunction.getState(player, 'combat', 'comboCount')
 	if humanoid:GetState() == Enum.HumanoidStateType.Freefall and comboCount == 4 then return "Slam" end
 	if userInputService:IsKeyDown(Enum.KeyCode.Space) and comboCount == 4 then return "Uppercut" end
 	return tostring(comboCount)
 end
 
-private.triggerHit = function(player : Player, otherCharacter : Model, damage : number, comboCount : number)
-	hurtEvent:FireServer(otherCharacter, damage, comboCount)
-end
-
-private.handleAttackAnimation = function(player: Player, character: Model, humanoidRootPart: BasePart, animationName: string)
+private.handleAttackAnimation = function(player : Player, character : Model, humanoidRootPart : BasePart, animationName : string)
 	animationFunction.playAnimation(player, animationName, false)
 	
 	local parts
@@ -184,26 +155,28 @@ private.handleAttackAnimation = function(player: Player, character: Model, human
 		parts = private.getTargetRegion3(character, humanoidRootPart, private.m1Data.regularAreaOfEffect, 3)
 	end
 	
-	local otherCharacter = private.getOtherCharacter(parts)
-	if otherCharacter and private.detectHumanoid(parts) then
+	local targetCharacter = private.getOtherCharacter(parts)
+	if targetCharacter and private.detectHumanoid(parts) then
 		if animationName == "Slam" then
-			--private.slam(otherCharacter)
+			hurtEvent:FireServer(targetCharacter, 'slam', private.m1Data.slamDamage)
+			local targetHumanoidRootPart = targetCharacter:FindFirstChild('HumanoidRootPart') :: BasePart
+			destroyEnviromentEvent:FireServer(targetCharacter, targetHumanoidRootPart.Position, private.m1Data.slamAreaOfEffect)
 		elseif animationName == "Uppercut" then
-			--private.uppercut(otherCharacter)
+			hurtEvent:FireServer(targetCharacter, 'uppercut', private.m1Data.uppercutDamage)
 		else
-			private.triggerHit(player, otherCharacter, private.m1Data.damage, playerStateFunction.getState(player, 'combat', 'comboCount'))
+			hurtEvent:FireServer(targetCharacter, 'm1', private.m1Data.damage, playerStateFunction.getState(player, 'combat', 'comboCount'))
 		end
 	end
 end
 
-private.handlePostAnimation = function(player: Player, humanoid: Humanoid, animationName: string)
+private.handlePostAnimation = function(player : Player, humanoid : Humanoid, animationName : string)
 	animationFunction.stopped(player, animationName, function()
 		task.delay(1.15, function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end)
 		playerStateFunction.setState(player, 'combat', 'attackDebounce', false)
 	end)
 end
 
-private.incrementCombo = function(player: Player)
+private.incrementCombo = function(player : Player)
 	local newCount = playerStateFunction.getState(player, 'combat', 'comboCount') + 1
 	playerStateFunction.setState(player, 'combat', 'comboCount', newCount)
 	if newCount > 4 then
@@ -215,7 +188,7 @@ private.incrementCombo = function(player: Player)
 	end
 end
 
-private.m1 = function(inputObject: InputObject, player: Player, character: Model, humanoid: Humanoid, humanoidRootPart: BasePart)
+private.m1 = function(inputObject : InputObject, player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart)
 	if private.shouldBlockM1(inputObject, player) then return end
 	private.disableSprint(player, humanoid)
 	private.resetComboIfTimeout(player)
@@ -231,9 +204,11 @@ end
 
 private.initalizeAnimations = function(player : Player)
 	local animationsFolder = game.ReplicatedStorage:FindFirstChild('CharacterData'):FindFirstChild('Animations') :: Folder
+	local universalAnimationsFolder = animationsFolder:FindFirstChild('UniversalAnimations') :: Folder
+	local m1HurtsFolder = universalAnimationsFolder:FindFirstChild('M1Hurts') :: Folder
 	local selectedCharacterAnimationsFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
 	local selectedCharacterM1AnimationsFolder = selectedCharacterAnimationsFolder:FindFirstChild('M1') :: Folder
-	animationFunction.addAnimationsFromFolder(player, selectedCharacterM1AnimationsFolder)
+	animationFunction.addAnimationsFromMultipleFolders(player, selectedCharacterM1AnimationsFolder, m1HurtsFolder)
 end
 
 private.setupCharacter = function(player : Player)
