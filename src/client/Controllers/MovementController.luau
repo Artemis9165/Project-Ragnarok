@@ -2,7 +2,7 @@
 
 local userInputService = game:GetService('UserInputService')
 
-local animationController = require(game.StarterPlayer.StarterPlayerScripts.Controllers.AnimationController)
+local animationController = require(game.StarterPlayer.StarterPlayerScripts.Controllers.PlayerDataControllers.AnimationController)
 local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
 
 local sprintEvent = game.ReplicatedStorage.RemoteEvents.MovementEvents.SprintEvent
@@ -110,27 +110,27 @@ private.triggerDash = function(player : Player, character : Model, humanoid : Hu
 	local animationDuration = animationController.getAnimationDuration(player, dashType)
 	if dashType == 'ForwardDash' then
 		private.dashValues.canForwardDash = false
-		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, -1), 50, animationDuration - 0.8, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, -1), animationDuration - 0.8, moveable)
 		task.delay(animationDuration + 2, function()
 			private.dashValues.canForwardDash = true
 		end)
 	end
 	if dashType == 'Back' then
-		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, 1), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, 1), animationDuration, moveable)
 		private.dashValues.canBackDash = false
 		task.delay(animationDuration + 3, function()
 			private.dashValues.canBackDash = true
 		end)
 	end
 	if dashType == 'Left' then
-		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(-1, 0, 0), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(-1, 0, 0), animationDuration, moveable)
 		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
 			private.dashValues.canSideDash = true
 		end)
 	end
 	if dashType == 'Right' then
-		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(1, 0, 0), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(1, 0, 0), animationDuration, moveable)
 		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
 			private.dashValues.canSideDash = true
