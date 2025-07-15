@@ -1,21 +1,15 @@
 --!strict
-local userInputService = game:GetService('UserInputService')
-local players = game:GetService('Players')
-local runService = game:GetService('RunService')
 
+local userInputService = game:GetService('UserInputService')
+
+local animationController = require(game.StarterPlayer.StarterPlayerScripts.Controllers.AnimationController)
 local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
-local playerStateFunction = require(game.ReplicatedStorage.Functions.PlayerStateFunction)
-local animationFunction = require(game.ReplicatedStorage.Functions.AnimationFunction)
+
+local sprintEvent = game.ReplicatedStorage.RemoteEvents.MovementEvents.SprintEvent
+local dashEvent = game.ReplicatedStorage.RemoteEvents.MovementEvents.DashEvent
 
 local private = {}
 local public = {}
-
-local sprintKey = Enum.KeyCode.W :: Enum.KeyCode
-local maxDelay = 0.25 :: number
-local sprintTick = 0 :: number
-
-local dashKey = Enum.KeyCode.Q :: Enum.KeyCode
-local dashCooldown = 1.5 :: number
 
 private.dashValues = {
 	canDash = true,
@@ -24,11 +18,49 @@ private.dashValues = {
 	canSideDash = true,
 }
 
-private.getCharacter = function(player : Player) : (Model, Humanoid, BasePart)
+private.sprintKey = Enum.KeyCode.W :: Enum.KeyCode
+private.maxDelay = 0.25 :: number
+private.sprintTick = 0 :: number
+
+private.dashKey = Enum.KeyCode.Q :: Enum.KeyCode
+private.dashCooldown = 1.5 :: number
+
+private.getPlayerParts = function(player : Player) : (Model, Humanoid, BasePart, Camera)
 	local character = player.Character or player.CharacterAdded:Wait() :: Model
-	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
-	return character, humanoid, humanoidRootPart
+	local humanoid = character:FindFirstChildOfClass('Humanoid') :: Humanoid
+	local humanoidRootPart = character:FindFirstChild('HumanoidRootPart') :: BasePart
+	local camera = workspace.CurrentCamera
+	return character, humanoid, humanoidRootPart, camera
+end
+
+private.initalizeAnimations = function(player : Player)
+	local animationsFolder = game.ReplicatedStorage:FindFirstChild('CharacterData'):FindFirstChild('Animations') :: Folder
+	local universalAnimationsFolder = animationsFolder:FindFirstChild('UniversalAnimations') :: Folder
+	local dashesAnimationFolder = universalAnimationsFolder:FindFirstChild('Dashes') :: Folder
+	local selectedCharacterAnimationsFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
+	local selectedCharacterGeneralAnimationsFolder = selectedCharacterAnimationsFolder:FindFirstChild('General') :: Folder
+	local selectedCharacterSprintAnimation = selectedCharacterGeneralAnimationsFolder:FindFirstChild('Sprint') :: Animation
+	local selectedCharacterForwardDashAnimation = selectedCharacterGeneralAnimationsFolder:FindFirstChild('ForwardDash') :: Animation
+	animationController.addMultipleAnimations(player, selectedCharacterSprintAnimation, selectedCharacterForwardDashAnimation)
+	animationController.addAnimationsFromFolder(player, dashesAnimationFolder)
+end
+
+private.startSprint = function(player : Player, input : InputObject)
+	if input.KeyCode == private.sprintKey then
+		if tick() - private.sprintTick <= private.maxDelay then
+			animationController.playAnimation(player, 'Sprint', true)
+			sprintEvent:FireServer(true)
+		else
+			private.sprintTick = tick()
+		end
+	end
+end
+
+private.endSprint = function(player : Player, input : InputObject)
+	if input.KeyCode == private.sprintKey then
+		animationController.stopAnimation(player, 'Sprint')
+		sprintEvent:FireServer(false)
+	end
 end
 
 private.playerFaceAwayCamera = function(humanoidRootPart : BasePart, camera : Camera)
@@ -43,166 +75,107 @@ private.detectShiftLock = function(player : Player) : boolean
 	return player.DevEnableMouseLock and userInputService.MouseBehavior == Enum.MouseBehavior.LockCenter
 end
 
-private.startSprint = function( player : Player, humanoid : Humanoid, inputObject: InputObject)
-	if inputObject.KeyCode == sprintKey then
-		if tick() - sprintTick <= maxDelay then
-			humanoid.WalkSpeed = 24
-			animationFunction.playAnimation(player, "Sprint", true)
-			playerStateFunction.setState(player, 'misc', 'sprinting', true)
-		else
-			sprintTick = tick()
-		end
-	end
-end
+private.getDashDirection = function(player : Player, character : Model): Vector3
+	if not character then return Vector3.zero end
 
-private.endSprint = function(player : Player, humanoid : Humanoid, inputObject: InputObject)
-	if inputObject.KeyCode == sprintKey then
-		humanoid.WalkSpeed = 16
-		animationFunction.stopAnimation(player, "Sprint")
-		playerStateFunction.setState(player, 'misc', 'sprinting', false)
-	end
-end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
+	if not humanoidRootPart then return Vector3.zero end
 
-private.disableJump = function(humanoid : Humanoid, time : number)
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-	task.delay(time, function()
-		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-	end)
-end
+	local moveVector = Vector3.zero
 
-private.createLinearVelocity = function(humanoidRootPart : BasePart, camera : Camera, localDirection: Vector3, speed: number, time: number, moveable: boolean)
-	local attachment = Instance.new("Attachment", humanoidRootPart)
-	attachment.WorldPosition = humanoidRootPart.AssemblyCenterOfMass
-	attachment.WorldCFrame = humanoidRootPart.CFrame
-	local linearVelocity = Instance.new("LinearVelocity")
-	linearVelocity.Attachment0 = attachment
-	linearVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
-	linearVelocity.PrimaryTangentAxis = Vector3.new(1, 0, 0)
-	linearVelocity.SecondaryTangentAxis = Vector3.new(0, 0, 1)
-	linearVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
-	linearVelocity.MaxForce = math.huge
-	linearVelocity.Parent = attachment
-	if moveable then
-		local alive = true
-		local connection = runService.Heartbeat:Connect(function()
-			if not alive then return end
-			local camLook = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z)
-			local baseDirectionCFrame = CFrame.new(Vector3.zero, camLook)
-			local worldDirection = baseDirectionCFrame:VectorToWorldSpace(localDirection).Unit
-			linearVelocity.PlaneVelocity = Vector2.new(worldDirection.X, worldDirection.Z) * speed
-		end)
-		task.delay(time, function()
-			alive = false
-			if connection then connection:Disconnect() end
-		end)
+	if private.detectShiftLock(player) then
+		local camCFrame = workspace.CurrentCamera.CFrame
+		moveVector = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
 	else
-		local camLook = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z)
-		local baseDirectionCFrame = CFrame.new(Vector3.zero, camLook)
-		local worldDirection = baseDirectionCFrame:VectorToWorldSpace(localDirection).Unit
-		linearVelocity.PlaneVelocity = Vector2.new(worldDirection.X, worldDirection.Z) * speed
+		moveVector = humanoidRootPart.CFrame:VectorToWorldSpace(Vector3.new(userInputService:IsKeyDown(Enum.KeyCode.D) and 1 or userInputService:IsKeyDown(Enum.KeyCode.A) and -1 or 0,
+			0, 
+			userInputService:IsKeyDown(Enum.KeyCode.S) and 1 or userInputService:IsKeyDown(Enum.KeyCode.W) and -1 or 0)).Unit
 	end
-	task.delay(time, function()
-		linearVelocity:Destroy()
-		attachment:Destroy()
-	end)
+	return moveVector.Magnitude > 0 and moveVector.Unit or Vector3.zero
 end
 
-private.triggerDash = function(player : Player, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, dashType : string)
+
+private.triggerDash = function(player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, dashType : string)
+	local camLook = workspace.CurrentCamera.CFrame.LookVector
+	local flatDir = Vector3.new(camLook.X, 0, camLook.Z).Unit
 	private.playerFaceAwayCamera(humanoidRootPart, camera)
-	playerStateFunction.setState(player, 'misc', "dashing", true)
 	private.dashValues.canDash = false
 	local moveable = true
 	if not private.detectShiftLock(player) then
 		humanoid.AutoRotate = false
 		moveable = false
 	end
-	animationFunction.playAnimation(player, dashType, false, Enum.AnimationPriority.Action2)
-	local animationDuration = animationFunction.getAnimationDuration(player, dashType)
-	private.disableJump(humanoid, animationDuration)
+	animationController.playAnimation(player, dashType, false, Enum.AnimationPriority.Action2)
+	local dashDirection = private.getDashDirection(player, character)
+	local animationDuration = animationController.getAnimationDuration(player, dashType)
 	if dashType == 'ForwardDash' then
 		private.dashValues.canForwardDash = false
-		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(0, 0, -1), 50, animationDuration - 0.8, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, -1), 50, animationDuration - 0.8, moveable)
 		task.delay(animationDuration + 2, function()
 			private.dashValues.canForwardDash = true
 		end)
 	end
 	if dashType == 'Back' then
-		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(0, 0, 1), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, 1), 50, animationDuration, moveable)
 		private.dashValues.canBackDash = false
 		task.delay(animationDuration + 3, function()
 			private.dashValues.canBackDash = true
 		end)
 	end
 	if dashType == 'Left' then
-		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(-1, 0, 0), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(-1, 0, 0), 50, animationDuration, moveable)
 		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
 			private.dashValues.canSideDash = true
 		end)
 	end
 	if dashType == 'Right' then
-		private.createLinearVelocity(humanoidRootPart, camera, Vector3.new(1, 0, 0), 50, animationDuration, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(1, 0, 0), 50, animationDuration, moveable)
 		private.dashValues.canSideDash = false
 		task.delay(animationDuration + 1, function()
 			private.dashValues.canSideDash = true
 		end)
 	end
-	
-	animationFunction.stopped(player, dashType, function()
-		playerStateFunction.setState(player, 'misc', 'dashing', false)
-	end)
-	
-	task.delay(animationDuration, function()
+
+	animationController.stopped(player, dashType, function()
+		dashEvent:FireServer(false)
 		humanoid.AutoRotate = true
 		private.dashValues.canDash = true
 	end)
 end
 
-private.dash = function(player : Player, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, inputObject: InputObject)
-	if inputObject.KeyCode == dashKey and private.dashValues.canDash then
+
+private.dash = function(player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, input: InputObject)
+	if input.KeyCode == private.dashKey and private.dashValues.canDash then
 		if userInputService:IsKeyDown(Enum.KeyCode.W) and private.dashValues.canForwardDash then
-			private.triggerDash(player, humanoid, humanoidRootPart, camera, "ForwardDash")
+			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
 		elseif userInputService:IsKeyDown(Enum.KeyCode.S) and private.dashValues.canBackDash then
-			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Back")
+			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Back")
 		elseif userInputService:IsKeyDown(Enum.KeyCode.A) and private.dashValues.canSideDash then
-			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Left")
+			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Left")
 		elseif userInputService:IsKeyDown(Enum.KeyCode.D) and private.dashValues.canSideDash then
-			private.triggerDash(player, humanoid, humanoidRootPart, camera, "Right")
+			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Right")
 		elseif private.dashValues.canForwardDash and humanoid.MoveDirection.Magnitude == 0 then
-			private.triggerDash(player, humanoid, humanoidRootPart, camera, "ForwardDash")
+			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
 		end
 	end
 end
 
-private.initalizeAnimations = function(player : Player)
-	local animationsFolder = game.ReplicatedStorage:FindFirstChild('CharacterData'):FindFirstChild('Animations') :: Folder
-	local universalAnimationsFolder = animationsFolder:FindFirstChild('UniversalAnimations') :: Folder
-	local dashesAnimationFolder = universalAnimationsFolder:FindFirstChild('Dashes') :: Folder
-	local selectedCharacterAnimationsFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
-	local selectedCharacterGeneralAnimationsFolder = selectedCharacterAnimationsFolder:FindFirstChild('General') :: Folder
-	local selectedCharacterSprintAnimation = selectedCharacterGeneralAnimationsFolder:FindFirstChild('Sprint') :: Animation
-	local selectedCharacterForwardDashAnimation = selectedCharacterGeneralAnimationsFolder:FindFirstChild('ForwardDash') :: Animation
-	animationFunction.addMultipleAnimations(player, selectedCharacterSprintAnimation, selectedCharacterForwardDashAnimation)
-	animationFunction.addAnimationsFromFolder(player, dashesAnimationFolder)
-end
-
 private.setupCharacter = function(player : Player)
-	local camera = workspace.CurrentCamera :: Camera
-	local character : Model, humanoid : Humanoid, humanoidRootPart : BasePart = private.getCharacter(player)
-	userInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessedEvent: boolean)
+	local character : Model, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera = private.getPlayerParts(player)
+	userInputService.InputBegan:Connect(function(input : InputObject, gameProcessedEvent : boolean)
 		if gameProcessedEvent then return end
-		private.startSprint(player, humanoid, inputObject)
-		private.dash(player, humanoid, humanoidRootPart, camera, inputObject)
+		private.startSprint(player, input)
+		private.dash(player, character, humanoid, humanoidRootPart, camera, input)
 	end)
-
-	userInputService.InputEnded:Connect(function(inputObject: InputObject, gameProcessedEvent: boolean)
+	userInputService.InputEnded:Connect(function(input : InputObject, gameProcessedEvent : boolean)
 		if gameProcessedEvent then return end
-		private.endSprint(player, humanoid, inputObject)
+		private.endSprint(player, input)
 	end)
 end
 
 public.onStart = function()
-	local player = players.LocalPlayer :: Player
+	local player = game.Players.LocalPlayer
 	private.setupCharacter(player)
 	private.initalizeAnimations(player)
 	player.CharacterAdded:Connect(function() private.setupCharacter(player) end)

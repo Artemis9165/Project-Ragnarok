@@ -1,7 +1,7 @@
 --!strict
 local ragdollData = require(game.ReplicatedStorage.Functions.Offsets)
-local npcService = require(game.ServerScriptService.Services.NPCService)
-local ragdollEvent = game.ReplicatedStorage.RemoteEvents.RagdollEvent
+local npcService = require(game.ServerScriptService.Services.NPCServices.NPCService)
+local ragdollEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.RagdollEvent
 
 local private = {}
 local public = {}

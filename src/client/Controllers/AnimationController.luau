@@ -33,7 +33,13 @@ public.createAnimationProfile = function(player : Player)
 	end
 end
 
+public.removeAnimations = function(player : Player)
+	private.playerSavedAnimations[player] = nil
+	private.playerLoadedAnimations[player] = nil
+end
+
 public.addAnimation = function(player : Player, animation : Animation)
+	while not private.playerSavedAnimations[player] or not private.playerLoadedAnimations[player] do task.wait() end
 	local animator = private.getAnimatorFromPlayer(player) :: Animator
 	if not animation.AnimationId or animation.AnimationId == '' then return end
 	private.playerSavedAnimations[player][animation.Name] = animation
@@ -96,6 +102,10 @@ end
 
 public.ended = function(player : Player, animationName : string, functionParameter : () -> ())
 	private.playerLoadedAnimations[player][animationName].Ended:Connect(functionParameter)
+end
+
+public.onStart = function()
+	
 end
 
 return public

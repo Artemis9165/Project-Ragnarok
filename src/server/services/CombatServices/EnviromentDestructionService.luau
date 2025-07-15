@@ -2,12 +2,12 @@
 
 local collectionService = game:GetService('CollectionService')
 
-local destroyEnviromentEvent = game.ReplicatedStorage.RemoteEvents.DestroyEnviromentEvent
+local destroyEnviromentEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.DestroyEnviromentEvent
 
 local private = {}
 local public = {}
 
-private.destroyEnviroment = function(player : Player, character : Model, impactPosition : Vector3, areaDestroyed : Vector3)
+public.destroyEnviroment = function(player : Player, character : Model, impactPosition : Vector3, areaDestroyed : Vector3)
 	local region = Region3.new(
 		impactPosition - areaDestroyed,
 		impactPosition + areaDestroyed
@@ -33,8 +33,6 @@ private.destroyEnviroment = function(player : Player, character : Model, impactP
 	end
 end
 
-public.onStart = function()
-	destroyEnviromentEvent.OnServerEvent:Connect(private.destroyEnviroment)
-end
+public.onStart = function() end
 
 return public

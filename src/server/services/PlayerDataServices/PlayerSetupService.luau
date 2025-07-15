@@ -1,5 +1,6 @@
 --!strict
 
+local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
 local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
 local types = require(game.ReplicatedStorage.Functions.Types)
 
@@ -30,19 +31,25 @@ private.updatePlayerAnimations = function(player : Player)
 	idle2Animation.AnimationId = selectedCharacterIdleAnimation.AnimationId
 end
 
-private.startPlayer = function(player : Player, characterName : types.characterName)
-	player.CharacterAdded:Connect(function()
-		local character = player.Character or player.CharacterAdded:Wait() :: Model
-		local humanoid = character:WaitForChild('Humanoid') :: Humanoid
-		humanoid.Health = 100
-		humanoid.WalkSpeed = 16
-		humanoid.JumpHeight = 7.2
-		private.updatePlayerAnimations(player)
-	end)
+private.setupCharacter = function(player : Player)
+	local character = player.Character or player.CharacterAdded:Wait() :: Model
+	local humanoid = character:WaitForChild('Humanoid') :: Humanoid
+	humanoid.Health = 100
+	humanoid.WalkSpeed = 16
+	humanoid.JumpHeight = 7.2
+	private.updatePlayerAnimations(player)
 end
+
+private.startPlayer = function(player : Player)
+	playerStateService.createState(player)
+	player.CharacterAdded:Connect(function() private.setupCharacter(player) end)
+end
+
+private.removePlayer = function(player : Player) playerStateService.clearState(player) end
 
 public.onStart = function()
 	game.Players.PlayerAdded:Connect(private.startPlayer)
+	game.Players.PlayerRemoving:Connect(private.removePlayer)
 end
 
 return public

@@ -1,6 +1,6 @@
 --!strict
 
-local npcAnimationFunction = require(game.ReplicatedStorage.Functions.NPCAnimationFunction)
+local npcAnimationService = require(game.ServerScriptService.Services.NPCServices.NPCAnimationService)
 local npcTemplate = game.ServerStorage:WaitForChild('DummyTemplate') -- Original rig
 local npcFunction = game.ReplicatedStorage.RemoteFunctions.NPCFunction
 
@@ -13,8 +13,8 @@ private.npcSavedAnimations = {} :: {[Model] : {[string] : Animation}}
 private.npcLoadedAnimations = {} :: {[Model] : {[string] : AnimationTrack}}
 
 private.initializeAnimations = function(npc : Model)
-	npcAnimationFunction.createAnimationProfile(npc)
-	npcAnimationFunction.addAnimationsFromFolder(npc, game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.M1Hurts)
+	npcAnimationService.createAnimationProfile(npc)
+	npcAnimationService.addAnimationsFromFolder(npc, game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.M1Hurts)
 end
 
 private.spawnNPC = function(position: CFrame?)
@@ -28,7 +28,7 @@ private.spawnNPC = function(position: CFrame?)
 	local humanoid = npcClone:FindFirstChildOfClass('Humanoid') :: Humanoid
 	humanoid.Died:Connect(function()
 		task.delay(3, function()
-			npcAnimationFunction.clearAnimations(npcClone)
+			npcAnimationService.clearAnimations(npcClone)
 			npcClone:Destroy()
 			private.spawnNPC(position)
 		end)

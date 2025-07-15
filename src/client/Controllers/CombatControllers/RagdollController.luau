@@ -1,4 +1,4 @@
-local ragdollEvent = game.ReplicatedStorage.RemoteEvents.RagdollEvent
+local ragdollEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.RagdollEvent
 
 local public = {}
 

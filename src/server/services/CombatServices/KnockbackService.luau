@@ -1,5 +1,5 @@
 --!strict
-local knockbackEvent = game.ReplicatedStorage.RemoteEvents.KnockbackEvent
+local knockbackEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.KnockbackEvent
 local private = {}
 local public = {}
 
