@@ -41,7 +41,7 @@ public.setState = function(player: Player, stateType : types.stateType, state: t
 end
 
 public.onStart = function()
-	playerGetStateFunction.OnServerInvoke = function(player: Player, stateType : types.stateType?, state : types.stateName?) return public.getState(player, stateType, state) end
+	playerGetStateFunction.OnServerInvoke = function(player : Player, stateType : types.stateType?, state : types.stateName?) return public.getState(player, stateType, state) end
 end
 
 return public

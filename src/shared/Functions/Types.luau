@@ -7,6 +7,10 @@ export type stateName = 'blocking' | 'comboCount' | 'jumping' | 'attacking' | 'h
 
 export type stateType = 'combat' | 'misc'
 
+export type detectionType = 'raycast' | 'region3'
+
+export type m1AttackType = 'm1' | 'uppercut' | 'slam'
+
 export type combatState = {
 	blocking : boolean,
 	comboCount : number,

@@ -1,7 +1,7 @@
 --!strict
 
 local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
-local cameraEvent = game.ReplicatedStorage.RemoteEvents.CameraEvent
+local cameraEvent = game.ReplicatedStorage.RemoteEvents.DataEvents.CameraEvent
 local movementEventFolder = game.ReplicatedStorage.RemoteEvents.MovementEvents
 local sprintEvent = movementEventFolder.SprintEvent
 local dashEvent = movementEventFolder.DashEvent
