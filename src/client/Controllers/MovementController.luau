@@ -8,6 +8,8 @@ local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.Ge
 local sprintEvent = game.ReplicatedStorage.RemoteEvents.MovementEvents.SprintEvent
 local dashEvent = game.ReplicatedStorage.RemoteEvents.MovementEvents.DashEvent
 
+local getPlayerStateRemoteFunction = game.ReplicatedStorage.RemoteFunctions.PlayerGetStateFunction
+
 local private = {}
 local public = {}
 
@@ -46,21 +48,19 @@ private.initalizeAnimations = function(player : Player)
 end
 
 private.startSprint = function(player : Player, input : InputObject)
-	if input.KeyCode == private.sprintKey then
-		if tick() - private.sprintTick <= private.maxDelay then
-			animationController.playAnimation(player, 'Sprint', true)
-			sprintEvent:FireServer(true)
-		else
-			private.sprintTick = tick()
-		end
+	if input.KeyCode ~= private.sprintKey or getPlayerStateRemoteFunction:InvokeServer('combat', 'blocking') then return end
+	if tick() - private.sprintTick <= private.maxDelay then
+		animationController.playAnimation(player, 'Sprint', true)
+		sprintEvent:FireServer(true)
+	else
+		private.sprintTick = tick()
 	end
 end
 
 private.endSprint = function(player : Player, input : InputObject)
-	if input.KeyCode == private.sprintKey then
-		animationController.stopAnimation(player, 'Sprint')
-		sprintEvent:FireServer(false)
-	end
+	if input.KeyCode ~= private.sprintKey then return end
+	animationController.stopAnimation(player, 'Sprint')
+	sprintEvent:FireServer(false)
 end
 
 private.playerFaceAwayCamera = function(humanoidRootPart : BasePart, camera : Camera)
@@ -110,7 +110,7 @@ private.triggerDash = function(player : Player, character : Model, humanoid : Hu
 	local animationDuration = animationController.getAnimationDuration(player, dashType)
 	if dashType == 'ForwardDash' then
 		private.dashValues.canForwardDash = false
-		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, -1), animationDuration - 0.8, moveable)
+		dashEvent:FireServer(true, workspace.CurrentCamera.CFrame.LookVector, Vector3.new(0, 0, -1), animationDuration - 0.8, moveable, 'Forward')
 		task.delay(animationDuration + 2, function()
 			private.dashValues.canForwardDash = true
 		end)
@@ -146,18 +146,17 @@ end
 
 
 private.dash = function(player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart, camera : Camera, input: InputObject)
-	if input.KeyCode == private.dashKey and private.dashValues.canDash then
-		if userInputService:IsKeyDown(Enum.KeyCode.W) and private.dashValues.canForwardDash then
-			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.S) and private.dashValues.canBackDash then
-			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Back")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.A) and private.dashValues.canSideDash then
-			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Left")
-		elseif userInputService:IsKeyDown(Enum.KeyCode.D) and private.dashValues.canSideDash then
-			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Right")
-		elseif private.dashValues.canForwardDash and humanoid.MoveDirection.Magnitude == 0 then
-			private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
-		end
+	if input.KeyCode ~= private.dashKey or not private.dashValues.canDash then return end
+	if userInputService:IsKeyDown(Enum.KeyCode.W) and private.dashValues.canForwardDash then
+		private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
+	elseif userInputService:IsKeyDown(Enum.KeyCode.S) and private.dashValues.canBackDash then
+		private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Back")
+	elseif userInputService:IsKeyDown(Enum.KeyCode.A) and private.dashValues.canSideDash then
+		private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Left")
+	elseif userInputService:IsKeyDown(Enum.KeyCode.D) and private.dashValues.canSideDash then
+		private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "Right")
+	elseif private.dashValues.canForwardDash and humanoid.MoveDirection.Magnitude == 0 then
+		private.triggerDash(player, character, humanoid, humanoidRootPart, camera, "ForwardDash")
 	end
 end
 

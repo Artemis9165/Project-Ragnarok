@@ -59,8 +59,12 @@ private.createHitbox = function(player : Player, character : Model, humanoid : H
 	return characters
 end
 
-private.triggerHit = function(player : Player, humanoid : Humanoid, characters : {Model})
+private.triggerHit = function(player : Player, humanoid : Humanoid, characters : {Model}, isForwardDash : boolean?)
 	for _, targetCharacter in ipairs(characters) do
+		if isForwardDash then
+			hurtService.hurt(player, targetCharacter, 'm1', 1, private.m1Data.damage)
+			return
+		end
 		if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
 			hurtService.hurt(player, targetCharacter, 'slam', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.slamDamage)
 			local targetHumanoidRootPart = targetCharacter:FindFirstChild('HumanoidRootPart') :: BasePart
@@ -98,15 +102,25 @@ private.incrementCombo = function(player : Player)
 	end
 end
 
-private.handlePostAnimation = function(player : Player, animationDuration : number) task.delay(animationDuration, function() playerStateService.setState(player, 'combat', 'attackDebounce', false) end) end
+private.handlePostAnimation = function(player : Player, animationDuration : number) 
+	task.delay(animationDuration, function() 
+		playerStateService.setState(player, 'combat', 'attackDebounce', false) 
+		playerStateService.setState(player, 'combat', 'attacking', false)
+	end)
+end
 
-private.m1 = function(player: Player, animationDuration: number)
+public.m1 = function(player: Player, animationDuration: number, isForwardDash : boolean?)
 	local character : Model, humanoid : Humanoid, humanoidRootPart : BasePart = private.getCharacterParts(player)
 	local characters : {Model} = private.createHitbox(player, character, humanoid, humanoidRootPart)
+	if isForwardDash then
+		private.triggerHit(player, humanoid, characters, isForwardDash)
+		return
+	end
 	private.triggerHit(player, humanoid, characters)
 	private.disableSprint(player)
 	playerStateService.setState(player, 'combat', 'lastComboTime', tick())
 	playerStateService.setState(player, 'combat', 'attackDebounce', true)
+	playerStateService.setState(player, 'combat', 'attacking', true)
 	private.incrementCombo(player)
 	private.handlePostAnimation(player, animationDuration)
 	task.delay(private.m1Data.comboResetTime, function() private.resetComboIfTimeout(player) end)
@@ -114,7 +128,7 @@ end
 
 
 public.onStart = function()
-	m1Event.OnServerEvent:Connect(private.m1)
+	m1Event.OnServerEvent:Connect(public.m1)
 	m1CheckerFunction.OnServerInvoke = private.m1Checker
 end
 

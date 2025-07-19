@@ -1,6 +1,7 @@
 --!strict
 local ragdollData = require(game.ReplicatedStorage.Functions.Offsets)
 local npcService = require(game.ServerScriptService.Services.NPCServices.NPCService)
+local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
 local ragdollEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.RagdollEvent
 
 local private = {}
@@ -27,7 +28,6 @@ private.buildCollisionParts = function(character : Model)
 		end
 	end
 end
-
 
 private.enableCollisionPoints = function(character : Model, enabled : boolean)
 	for i, v in pairs(character:GetChildren()) do
@@ -86,6 +86,7 @@ public.unragdollCharacter = function(character : Model)
 	
 	if player then
 		ragdollEvent:FireClient(player, 'unragdoll', humanoid)
+		playerStateService.setState(player, 'combat', 'hurting', false)
 	else
 		humanoidRootPart:SetNetworkOwner(nil)
 		if humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
@@ -108,6 +109,7 @@ public.ragdollCharacter = function(character : Model, duration : number?)
 	private.enableCollisionPoints(character, true)
 	if player then
 		ragdollEvent:FireClient(player, 'ragdoll', humanoid)
+		playerStateService.setState(player, 'combat', 'hurting', true)
 	else
 		humanoidRootPart:SetNetworkOwner(nil)
 		humanoid.AutoRotate = false

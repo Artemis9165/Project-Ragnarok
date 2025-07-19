@@ -5,7 +5,19 @@ local types = require(game.ReplicatedStorage.Functions.Types)
 local private = {}
 local public = {}
 
-private.getTargetRaycast = function(character : Model, origin: Vector3, direction: Vector3, range: number): Instance | nil
+public.getCharactersFromParts = function(parts : {BasePart}) : {Model}
+	local characters = {}
+	for i, part in ipairs(parts) do
+		local character = part.Parent :: Model
+		local humanoid = character:FindFirstChildOfClass('Humanoid') :: Humanoid
+		if humanoid and not table.find(characters, character) then
+			table.insert(characters, character)
+		end
+	end
+	return characters
+end
+
+public.getTargetRaycast = function(character : Model, origin: Vector3, direction: Vector3, range: number): Instance | nil
 	local rayParams = RaycastParams.new()
 	rayParams.FilterDescendantsInstances = {character}
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -33,15 +45,17 @@ private.getTargetRaycast = function(character : Model, origin: Vector3, directio
 	return nil
 end
 
-private.getTargetRegion3 = function(character : Model, humanoidRootPart : BasePart, size : Vector3, forwardOffset : number) : {Part}
-	local forwardVector = humanoidRootPart.CFrame.LookVector
-	local center = humanoidRootPart.Position + forwardVector * forwardOffset
-	local regionCFrame = CFrame.new(center, center + forwardVector)
-	local overlapParams = OverlapParams.new()
+public.getTargetRegion3 = function(character : Model, humanoidRootPart : BasePart, size : Vector3, forwardOffset : number) : {BasePart}
+	local forwardVector : Vector3 = humanoidRootPart.CFrame.LookVector
+	local center : Vector3 = humanoidRootPart.Position + forwardVector * forwardOffset
+	local regionCFrame : CFrame = CFrame.new(center, center + forwardVector)
+	local overlapParams : OverlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-	overlapParams.FilterDescendantsInstances = {character, workspace.Maps.CentralPark.Arena.Arena}
+	--Add when in map
+	--workspace.Maps.CentralPark.Arena.Arena
+	overlapParams.FilterDescendantsInstances = {character}
 	overlapParams.MaxParts = 50
-	local parts = workspace:GetPartBoundsInBox(regionCFrame, size, overlapParams)
+	local parts : {BasePart} = workspace:GetPartBoundsInBox(regionCFrame, size, overlapParams)
 
 	--[DEBUG]
 	--local debugPart = Instance.new("Part")

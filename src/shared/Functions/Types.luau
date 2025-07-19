@@ -11,6 +11,8 @@ export type detectionType = 'raycast' | 'region3'
 
 export type m1AttackType = 'm1' | 'uppercut' | 'slam'
 
+export type dashType = 'Forward' | 'Back' | 'Side'
+
 export type combatState = {
 	blocking : boolean,
 	comboCount : number,

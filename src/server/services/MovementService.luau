@@ -1,6 +1,8 @@
 --!strict
 
 local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
+local m1Service = require(game.ServerScriptService.Services.CombatServices.M1Service)
+local types = require(game.ReplicatedStorage.Functions.Types)
 local cameraEvent = game.ReplicatedStorage.RemoteEvents.DataEvents.CameraEvent
 local movementEventFolder = game.ReplicatedStorage.RemoteEvents.MovementEvents
 local sprintEvent = movementEventFolder.SprintEvent
@@ -86,12 +88,13 @@ private.createLinearVelocity = function(player : Player, humanoidRootPart : Base
 	end
 end
 
-private.dash = function(player : Player, start : boolean, lookVector : Vector3?, localDirection : Vector3?, duration : number?, moveable : boolean?)
+private.dash = function(player : Player, start : boolean, lookVector : Vector3?, localDirection : Vector3?, duration : number?, moveable : boolean?, dashType : types.dashType)
 	local _, humanoid : Humanoid, humanoidRootPart : BasePart = private.getPlayerParts(player)
 	if start and lookVector and localDirection and duration and moveable ~= nil and not playerStateService.getState(player, 'misc', "dashing") then
 		private.disableJump(player, humanoid, humanoidRootPart, duration)
 		playerStateService.setState(player, 'misc', 'dashing', true)
 		private.createLinearVelocity(player, humanoidRootPart, lookVector, localDirection, private.dashSpeed, duration, moveable)
+		if dashType == 'Forward' then task.delay(duration, function() m1Service.m1(player, duration, true) end) end
 	else
 		playerStateService.setState(player, 'misc', 'dashing', false)
 	end
