@@ -77,7 +77,7 @@ private.triggerHit = function(player : Player, humanoid : Humanoid, characters :
 	end
 end
 
-private.disableSprint = function(player : Player) if playerStateService.getState(player, 'misc', 'sprinting') then playerStateService.setState(player, 'misc', 'sprinting', false) end end
+private.disableSprint = function(player : Player) playerStateService.setState(player, 'misc', 'sprinting', false) end
 
 private.resetCombo = function(player : Player)
 	playerStateService.setState(player, 'combat', 'comboCount', 1)

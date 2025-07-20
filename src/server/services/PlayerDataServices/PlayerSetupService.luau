@@ -4,6 +4,8 @@ local playerStateService = require(game.ServerScriptService.Services.PlayerDataS
 local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
 local types = require(game.ReplicatedStorage.Functions.Types)
 
+local cloneCharacterSpecialsScriptEvent = game.ReplicatedStorage.RemoteEvents.DataEvents.CloneCharacterSpecialsScriptEvent
+
 local private = {}
 local public = {}
 
@@ -17,6 +19,11 @@ private.updatePlayerAnimations = function(player : Player)
 	local idleAnimation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation1') :: Animation
 	local idle2Animation = animateScript:FindFirstChild('idle'):FindFirstChild('Animation2') :: Animation
 
+	local universalAnimationFolder = game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations :: Folder
+	local otherUniversalAnimationsFolder = universalAnimationFolder:FindFirstChild('Other') :: Folder
+	local universalJumpAnimation = otherUniversalAnimationsFolder:FindFirstChild('Jump') :: Animation
+	local universalFallAnimation = otherUniversalAnimationsFolder:FindFirstChild('Fall') :: Animation
+	
 	local selectedCharacterName = getSelectedCharacterFunction.getSelectedCharacterName(player) :: string
 	local selectedCharacterAnimationFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
 	local selectedCharacterGeneralAnimationFolder = selectedCharacterAnimationFolder:FindFirstChild('General') :: Folder
@@ -25,10 +32,15 @@ private.updatePlayerAnimations = function(player : Player)
 
 	walkAnimation.AnimationId = selectedCharacterWalkAnimation.AnimationId
 	runAnimation.AnimationId = selectedCharacterWalkAnimation.AnimationId
-	jumpAnimation.AnimationId = game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.Other.Jump.AnimationId
-	fallAnimation.AnimationId = game.ReplicatedStorage.CharacterData.Animations.UniversalAnimations.Other.Fall.AnimationId
+	jumpAnimation.AnimationId = universalJumpAnimation.AnimationId
+	fallAnimation.AnimationId = universalFallAnimation.AnimationId
 	idleAnimation.AnimationId = selectedCharacterIdleAnimation.AnimationId
 	idle2Animation.AnimationId = selectedCharacterIdleAnimation.AnimationId
+end
+
+private.cloneSelectedCharacterSpecialsScript = function(player : Player)
+	local scriptName = getSelectedCharacterFunction.getSelectedCharacterName(player) :: types.characterName
+	cloneCharacterSpecialsScriptEvent:FireClient(player, scriptName)
 end
 
 private.setupCharacter = function(player : Player)
@@ -42,6 +54,7 @@ end
 
 private.startPlayer = function(player : Player)
 	playerStateService.createState(player)
+	private.cloneSelectedCharacterSpecialsScript(player)
 	player.CharacterAdded:Connect(function() private.setupCharacter(player) end)
 end
 

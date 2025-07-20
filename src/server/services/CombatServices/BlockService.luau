@@ -33,6 +33,8 @@ private.getCharacterPartsFromCharacter = function(character : Model) : (Humanoid
 	return humanoid, humanoidRootPart
 end
 
+private.disableSprint = function(player : Player) playerStateService.setState(player, 'misc', 'sprinting', false) end
+
 private.blockChecker = function(player : Player)
 	return playerStateService.getState(player, 'combat', 'hurting')
 		or playerStateService.getState(player, 'combat', 'attacking')

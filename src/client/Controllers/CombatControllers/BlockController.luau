@@ -13,7 +13,6 @@ local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.Ge
 
 -- [Remote Events]
 local blockEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.BlockEvent
-local playerSetStateEvent = game.ReplicatedStorage.RemoteEvents.DataEvents.PlayerSetStateEvent
 
 -- [Remote Functions]
 local blockCheckerFunction = game.ReplicatedStorage.RemoteFunctions.BlockChecker
@@ -39,7 +38,6 @@ end
 private.shouldNotBlock = function(player : Player, input : InputObject) return input.KeyCode ~= Enum.KeyCode.F or blockCheckerFunction:InvokeServer() end
 
 private.disableSprint = function(player : Player, humanoid : Humanoid, walkspeed : number)
-	playerSetStateEvent:FireServer('misc', 'sprinting', false)
 	humanoid.WalkSpeed = walkspeed
 	animationController.stopAnimation(player, 'Sprint')
 end
@@ -48,7 +46,6 @@ private.enableBlock = function(player : Player, humanoid : Humanoid, input : Inp
 	if private.shouldNotBlock(player, input) then return end
 	animationController.playAnimation(player, 'Startup', false)
 	animationController.stopped(player, 'Startup', function() if userInputService:IsKeyDown(Enum.KeyCode.F) then animationController.playAnimation(player, 'Hold', true) end end)
-	humanoid.WalkSpeed = 3
 	private.disableSprint(player, humanoid, 3)
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 	blockEvent:FireServer(true)

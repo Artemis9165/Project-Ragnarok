@@ -15,4 +15,14 @@ public.getSelectedCharacterAnimationFolder = function(player : Player) : Folder
 	return path
 end
 
+public.getSelectedCharacterSpecialsDataFolder = function(player : Player) : ModuleScript
+	local path = game.ReplicatedStorage.CharacterData.CharacterSpecialsData:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
+	return path
+end
+
+public.getSelectedCharacterSpecialsScriptFolder = function(player : Player) : ModuleScript
+	local path = game.ReplicatedStorage.CharacterData.CharacterSpecialScripts:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
+	return path
+end
+
 return public

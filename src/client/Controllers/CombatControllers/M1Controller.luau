@@ -15,7 +15,7 @@ local m1CheckerFunction = game.ReplicatedStorage.RemoteFunctions.M1Checker
 local private = {}
 local public = {}
 
-private.getCharacterParts = function(player : Player)
+private.getCharacterParts = function(player : Player) : (Model, Humanoid, BasePart)
 	local character = player.Character or player.CharacterAdded:Wait() :: Model
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
@@ -31,13 +31,11 @@ private.initalizeAnimations = function(player : Player)
 	animationController.addAnimationsFromMultipleFolders(player, selectedCharacterM1AnimationsFolder, m1HurtsFolder)
 end
 
-private.shouldBlockM1 = function(player : Player, input : InputObject) : boolean return input.UserInputType ~= Enum.UserInputType.MouseButton1 or m1CheckerFunction:InvokeServer() end
+private.shouldNotM1 = function(player : Player, input : InputObject) : boolean return input.UserInputType ~= Enum.UserInputType.MouseButton1 or m1CheckerFunction:InvokeServer() end
 
-private.disableSprint = function(player : Player, humanoid : Humanoid)
-	if getPlayerStateRemoteFunction:InvokeServer('misc', 'sprinting') then
-		humanoid.WalkSpeed = 16
-		animationController.stopAnimation(player, 'Sprint')
-	end
+private.disableSprint = function(player : Player, humanoid : Humanoid, walkspeed : number)
+	humanoid.WalkSpeed = walkspeed
+	animationController.stopAnimation(player, 'Sprint')
 end
 
 private.getComboAnimationName = function(player : Player, humanoid : Humanoid) : string
@@ -47,14 +45,16 @@ private.getComboAnimationName = function(player : Player, humanoid : Humanoid) :
 	return tostring(comboCount)
 end
 
-private.handlePostAnimation = function(player : Player, humanoid : Humanoid) animationController.stopped(player, '3', function() task.delay(0.25, function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end) end) end
+private.handlePostAnimation = function(player : Player, humanoid : Humanoid) 
+	animationController.stopped(player, '3', function() task.delay(0.25, function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end) end) 
+end
 
 private.m1 = function(player : Player, humanoid : Humanoid, input : InputObject)
-	if private.shouldBlockM1(player, input) then return end
+	if private.shouldNotM1(player, input) then return end
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 	local animationName = private.getComboAnimationName(player, humanoid)
 	animationController.playAnimation(player, animationName, false)
-	private.disableSprint(player, humanoid)
+	private.disableSprint(player, humanoid, 16)
 	m1Event:FireServer(animationController.getAnimationDuration(player, animationName))
 	private.handlePostAnimation(player, humanoid)
 end
@@ -76,7 +76,6 @@ end
 
 public.onStart = function()
 	local player = game.Players.LocalPlayer
-	local character : Model, humanoid : Humanoid, humanoidRootPart : BasePart = private.getCharacterParts(player)
 	private.setupCharacter(player)
 	private.initalizeAnimations(player)
 	player.CharacterAdded:Connect(function() private.setupCharacter(player) end)

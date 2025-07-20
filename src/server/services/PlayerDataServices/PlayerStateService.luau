@@ -1,6 +1,7 @@
 --!strict
 
 local types = require(game.ReplicatedStorage.Functions.Types)
+local playerStateEvent = game.ReplicatedStorage.RemoteEvents.DataEvents.PlayerSetStateEvent
 local playerGetStateFunction = game.ReplicatedStorage.RemoteFunctions.PlayerGetStateFunction
 
 local private = {}
@@ -24,6 +25,12 @@ public.createState = function(player : Player)
 			sprinting = false,
 			dashing = false,
 			isSpaceDown = false
+		},
+		specialsCooldown = {
+			special1 = false,
+			special2 = false,
+			special3 = false,
+			special4 = false
 		}
 	}
 end
@@ -41,6 +48,7 @@ public.setState = function(player: Player, stateType : types.stateType, state: t
 end
 
 public.onStart = function()
+	playerStateEvent.OnServerEvent:Connect(public.setState)
 	playerGetStateFunction.OnServerInvoke = function(player : Player, stateType : types.stateType?, state : types.stateName?) return public.getState(player, stateType, state) end
 end
 
