@@ -2,54 +2,58 @@
 
 local types = require(game.ReplicatedStorage.Functions.Types)
 
-local templateSpecialsData = {}
+local private = {}
+local public = {}
 
-templateSpecialsData.special1 = {
+private.special1 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.special2 = {
+private.special2 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.special3 = {
+private.special3 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.special4 = {
+private.special4 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.awakenedSpecial1 = {
+private.awakenedSpecial1 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.awakenedSpecial2 = {
+private.awakenedSpecial2 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.awakenedSpecial3 = {
+private.awakenedSpecial3 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-templateSpecialsData.awakenedSpecial4 = {
+private.awakenedSpecial4 = {
 	name = '',
 	keybind = '',
 	cooldown = 0
 } :: types.special
 
-return templateSpecialsData
+
+public.getSpecialData = function(specialName : types.specialName) : types.specialType return private[specialName] end
+
+return public

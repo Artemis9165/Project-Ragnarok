@@ -16,12 +16,12 @@ public.getSelectedCharacterAnimationFolder = function(player : Player) : Folder
 end
 
 public.getSelectedCharacterSpecialsDataFolder = function(player : Player) : ModuleScript
-	local path = game.ReplicatedStorage.CharacterData.CharacterSpecialsData:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
+	local path = game.ReplicatedStorage.CharacterData.CharacterSpecials.CharacterSpecialsData:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
 	return path
 end
 
 public.getSelectedCharacterSpecialsScriptFolder = function(player : Player) : ModuleScript
-	local path = game.ReplicatedStorage.CharacterData.CharacterSpecialScripts:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
+	local path = game.ReplicatedStorage.CharacterData.CharacterSpecials.CharacterSpecialScripts:FindFirstChild(public.getSelectedCharacterName(player)) :: ModuleScript
 	return path
 end
 

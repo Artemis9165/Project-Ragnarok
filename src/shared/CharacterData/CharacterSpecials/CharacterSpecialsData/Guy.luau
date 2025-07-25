@@ -43,7 +43,7 @@ private.specialRGeneral = {
 
 private.special1 = {
 	general = private.special1General,
-	damage = 2,
+	damage = {2, 2, 2, 2, 2, 2, 2, 2},
 } :: types.damagingSpecial
 
 private.special2 = {
@@ -92,18 +92,6 @@ private.awakenedSpecial4 = {
 	cooldown = 0
 } :: types.special
 
-public.specialDataR = {
-	general = {
-		awakenedSpecial1 = private.awakenedSpecial1,
-		awakenedSpecial2 = private.awakenedSpecial2,
-		awakenedSpecial3 = private.awakenedSpecial3,
-		awakenedSpecial4 = private.awakenedSpecial4,
-		special1 = private.special1,
-		special2 = private.special2,
-		special3 = private.special3,
-		special4 = private.special4,
-	},
-	specialR = private.specialR
-} :: types.specialDataR
+public.getSpecialData = function(specialName : types.specialName) : types.specialType return private[specialName] end
 
-return public.specialDataR
+return public

@@ -5,6 +5,8 @@ export type characterName = 'Guy' | 'Outlaw' | 'Fencer' | 'Special' | 'HolyGrail
 
 export type stateName = 'blocking' | 'comboCount' | 'jumping' | 'attacking' | 'hurting' | 'comboCooldown' | 'attackDebounce' | 'lastComboTime' | 'sprinting' | 'dashing' | 'isSpaceDown' | 'special1' | 'special2' | 'special3' | 'special4'
 
+export type specialName = 'special1' | 'special2' | 'special3' | 'special4'  | 'specialR' | 'awakenedSpecial1' | 'awakenedSpecial2' | 'awakenedSpecial3' | 'awakenedSpecial4' | 'awakenedSpecialR' | 'ultimate'
+
 export type stateType = 'combat' | 'misc' | 'specialsCooldown'
 
 export type detectionType = 'raycast' | 'region3'
