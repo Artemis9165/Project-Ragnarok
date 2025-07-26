@@ -6,6 +6,8 @@ local public = {}
 private.playerSavedAnimations = {} :: {[Player] : {[string] : Animation }}
 private.playerLoadedAnimations = {} :: {[Player] : {[string] : AnimationTrack}}
 
+private.markerConnections = {} :: {[string] : RBXScriptConnection}
+
 private.getAnimatorFromPlayer = function(player : Player) : Animator
 	local character = player.Character or player.CharacterAdded:Wait() :: Model
 	local humanoid = character:WaitForChild('Humanoid') :: Humanoid
@@ -95,6 +97,15 @@ public.stopAnimation = function(player : Player, animationName : string)
 	local anim = private.playerLoadedAnimations[player][animationName]
 	if anim then anim:Stop() end
 end
+
+public.markerReached = function(player: Player, animationName: string, markerName: string, callback: () -> ())
+	local key = player.UserId .. animationName .. markerName
+
+	if private.markerConnections[key] then private.markerConnections[key]:Disconnect() end
+
+	private.markerConnections[key] = private.playerLoadedAnimations[player][animationName]:GetMarkerReachedSignal(markerName):Connect(callback)
+end
+
 
 public.stopped = function(player : Player, animationName : string, functionParameter : () -> ())
 	private.playerLoadedAnimations[player][animationName].Stopped:Connect(functionParameter)

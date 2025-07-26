@@ -5,9 +5,10 @@ local types = require(game.ReplicatedStorage.Functions.Types)
 local private = {}
 local public = {}
 
-public.getSelectedCharacterName = function(player : Player) : string
+public.getSelectedCharacterName = function(player : Player)
 	local selectedCharacter = player:WaitForChild('SelectedCharacter') :: StringValue
-	return selectedCharacter.Value
+	local value = selectedCharacter.Value :: types.characterName
+	return value
 end
 
 public.getSelectedCharacterAnimationFolder = function(player : Player) : Folder

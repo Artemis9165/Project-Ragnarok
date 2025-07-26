@@ -5,7 +5,6 @@ local playerStateService = require(game.ServerScriptService.Services.PlayerDataS
 local detectionService = require(game.ServerScriptService.Services.CombatServices.DetectionService)
 local enviromentDestructionService = require(game.ServerScriptService.Services.CombatServices.EnviromentDestructionService)
 local hurtService = require(game.ServerScriptService.Services.CombatServices.HurtService)
-
 -- [Functions]
 
 -- [Remote Events]
@@ -62,17 +61,17 @@ end
 private.triggerHit = function(player : Player, humanoid : Humanoid, characters : {Model}, isForwardDash : boolean?)
 	for _, targetCharacter in ipairs(characters) do
 		if isForwardDash then
-			hurtService.hurt(player, targetCharacter, 'm1', 1, private.m1Data.damage)
+			hurtService.m1Hurt(player, targetCharacter, 'm1', 1, private.m1Data.damage)
 			return
 		end
 		if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
-			hurtService.hurt(player, targetCharacter, 'slam', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.slamDamage)
+			hurtService.m1Hurt(player, targetCharacter, 'slam', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.slamDamage)
 			local targetHumanoidRootPart = targetCharacter:FindFirstChild('HumanoidRootPart') :: BasePart
 			enviromentDestructionService.destroyEnviroment(targetCharacter, targetHumanoidRootPart.Position, private.m1Data.slamAreaOfEffect)
 		elseif playerStateService.getState(player, 'misc', 'isSpaceDown') then
-			hurtService.hurt(player, targetCharacter, 'uppercut', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.damage)
+			hurtService.m1Hurt(player, targetCharacter, 'uppercut', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.damage)
 		else
-			hurtService.hurt(player, targetCharacter, 'm1', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.damage)
+			hurtService.m1Hurt(player, targetCharacter, 'm1', playerStateService.getState(player, 'combat', 'comboCount'), private.m1Data.damage)
 		end
 	end
 end

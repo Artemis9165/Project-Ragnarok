@@ -1,5 +1,5 @@
 --!strict
-local module = {}
+local public = {}
 
 export type characterName = 'Guy' | 'Outlaw' | 'Fencer' | 'Special' | 'HolyGrail' | 'Hunter' | 'EscapeArtist' | 'PesteringSnow' | 'Template'
 
@@ -93,4 +93,13 @@ export type PlayerState = {
 	misc : miscState,
 }
 
-return module
+public.determineSpecialType = function(value) : string
+	if value.counterType then return 'counter' end
+	if value.grabType then return 'grab' end
+	if value.blockPercentage then return 'blockBreaker' end
+	if type(value.damage) == 'table' then return 'multiHit' end
+	if value.damage then return 'damaging' end
+	return 'regular'
+end
+
+return public

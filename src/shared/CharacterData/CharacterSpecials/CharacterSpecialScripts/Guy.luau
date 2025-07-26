@@ -1,16 +1,13 @@
 --!strict
 
 -- [Roblox Services]
-
--- [Services]
-local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
-local hurtService = require(game.ServerScriptService.Services.CombatServices.HurtService)
+local userInputService = game:GetService('UserInputService')
 
 -- [Controllers]
+local animationController = require(game.StarterPlayer.StarterPlayerScripts.Controllers.PlayerDataControllers.AnimationController)
 
 -- [Functions]
 local getSelectedCharacterFunction = require(game.ReplicatedStorage.Functions.GetSelectedCharacterFunction)
-local types = require(game.ReplicatedStorage.Functions.Types)
 
 -- [Remote Events]
 local specialsEvent = game.ReplicatedStorage.RemoteEvents.CombatEvents.SpecialsEvent
@@ -22,38 +19,49 @@ local specialCheckerFunction = game.ReplicatedStorage.RemoteFunctions.SpecialChe
 local private = {}
 local public = {}
 
-private.specialChecker = function(player : Player, specialKeybind : Enum.KeyCode) : boolean
-	local part1 = playerStateService.getState(player, 'combat', 'hurting')
-		or playerStateService.getState(player, 'combat', 'attacking')
-		or playerStateService.getState(player, 'combat', 'blocking')
-		or playerStateService.getState(player, 'misc', 'dashing')
-	if specialKeybind == Enum.KeyCode.One then return part1 or playerStateService.getState(player, 'specialsCooldown', 'special1') end
-	return false
+private.getCharacterParts = function(player : Player) : (Model, Humanoid, BasePart)
+	local character = player.Character or player.CharacterAdded:Wait() :: Model
+	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	return character, humanoid, humanoidRootPart
 end
 
-private.getSelectedCharacterSpecialData = function(player : Player) : SharedTable
-	local characterName = getSelectedCharacterFunction.getSelectedCharacterName(player) :: string
-	local selectedCharacterSpecialData = require(game.ReplicatedStorage.CharacterData.CharacterSpecials.CharacterSpecialsData[characterName]) :: SharedTable
-	return selectedCharacterSpecialData
+private.disableSprint = function(player : Player, humanoid : Humanoid, walkspeed : number)
+	humanoid.WalkSpeed = walkspeed
+	animationController.stopAnimation(player, 'Sprint')
 end
 
-private.enableCooldown = function(player : Player, special : types.stateName)
-	local selectedCharacterSpecialData = private.getSelectedCharacterSpecialData(player)
-	playerStateService.setState(player, 'specialsCooldown', special, true)
-	task.delay(selectedCharacterSpecialData.getSpecialData(special).general.cooldown, function() playerStateService.setState(player, 'specialsCooldown', special, false) end)
+private.initalizeAnimations = function(player : Player)
+	local selectedCharacterAnimationsFolder = getSelectedCharacterFunction.getSelectedCharacterAnimationFolder(player) :: Folder
+	local selectedCharacterAwakeningOrUltimateFolder = selectedCharacterAnimationsFolder:FindFirstChild('Awakening') :: Folder or selectedCharacterAnimationsFolder:FindFirstChild('Ultimate') :: Folder
+	local selectedCharacterSpecialsAnimationFolder = selectedCharacterAnimationsFolder:FindFirstChild('Specials') :: Folder
+	animationController.addAnimationsFromMultipleFolders(player, selectedCharacterSpecialsAnimationFolder, selectedCharacterAwakeningOrUltimateFolder)
 end
 
-private.special = function(player : Player, specialKeybind : Enum.KeyCode, count : number?)
-	local selectedCharacterSpecialData = private.getSelectedCharacterSpecialData(player)
-	if specialKeybind == Enum.KeyCode.One then 
-		print(selectedCharacterSpecialData.getSpecialData('special1').general.cooldown)
-	end
+private.special1 = function(player : Player, humanoid : Humanoid, input : InputObject)
+	if input.KeyCode ~= Enum.KeyCode.One or specialCheckerFunction:InvokeServer(Enum.KeyCode.One) or animationController.isAnimationPlaying(player, 'Special1') then return end
+	local count : number = 1
+	animationController.markerReached(player, 'Special1', 'hitStart', function() 
+		specialsEvent:FireServer(Enum.KeyCode.One, count)
+		count = count + 1
+	end)
+	private.disableSprint(player, humanoid, 16)
+	animationController.playAnimation(player, 'Special1', false)
+	animationController.stopped(player, 'Special1', function() cooldownEvent:FireServer('special1') end)
+end
+private.setupCharacter = function(player : Player)
+	local character : Model, humanoid : Humanoid, humanoidRootPart : BasePart = private.getCharacterParts(player)
+	userInputService.InputBegan:Connect(function(input : InputObject, gameProcessedEvent : boolean)
+		if gameProcessedEvent then return end
+		private.special1(player, humanoid, input)
+	end)
 end
 
 public.onStart = function()
-	specialsEvent.OnServerEvent:Connect(private.special)
-	cooldownEvent.OnServerEvent:Connect(private.enableCooldown)
-	specialCheckerFunction.OnServerInvoke = private.specialChecker
+	local player = game.Players.LocalPlayer
+	private.setupCharacter(player)
+	private.initalizeAnimations(player)
+	player.CharacterAdded:Connect(function() private.setupCharacter(player) end)
 end
 
 return public

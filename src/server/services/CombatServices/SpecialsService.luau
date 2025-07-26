@@ -5,6 +5,7 @@
 -- [Services]
 local playerStateService = require(game.ServerScriptService.Services.PlayerDataServices.PlayerStateService)
 local hurtService = require(game.ServerScriptService.Services.CombatServices.HurtService)
+local specialScriptService = require(game.ServerScriptService.Services.CombatServices.SpecialsScriptService)
 
 -- [Controllers]
 
@@ -44,9 +45,11 @@ private.enableCooldown = function(player : Player, special : types.stateName)
 end
 
 private.special = function(player : Player, specialKeybind : Enum.KeyCode, count : number?)
+	local characterName = getSelectedCharacterFunction.getSelectedCharacterName(player)
 	local selectedCharacterSpecialData = private.getSelectedCharacterSpecialData(player)
-	if specialKeybind == Enum.KeyCode.One then 
-		print(selectedCharacterSpecialData.getSpecialData('special1').general.cooldown)
+	if specialKeybind == Enum.KeyCode.One then
+		--print(count)
+		specialScriptService.triggerSpecial(player, characterName, 'special1', count)
 	end
 end
 
