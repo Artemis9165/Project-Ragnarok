@@ -23,8 +23,7 @@ private.m1Data = {
 	uppercutDamage = 4,
 	timeBetweenCombos = 0.75,
 	regularAreaOfEffect = Vector3.new(2, 2, 2),
-	bigAreaOfEffect = Vector3.new(7.5, 7.5, 7.5),
-	slamAreaOfEffect = Vector3.new(7, 30, 7),
+	slamAreaOfEffect = Vector3.new(7, 15, 7),
 	forwardDashAreaOfEffect = Vector3.new(5, 5, 5),
 	comboResetTime = 1.5,
 	m1StunDelay = 1.5
@@ -49,10 +48,10 @@ end
 
 private.createHitbox = function(player : Player, character : Model, humanoid : Humanoid, humanoidRootPart : BasePart) : {Model}
 	local parts : {BasePart}
-	if humanoid:GetStateEnabled(Enum.HumanoidStateType.Freefall) then
+	if humanoid:GetState() == Enum.HumanoidStateType.Freefall or humanoid:GetState() == Enum.HumanoidStateType.Jumping then
 		parts = detectionService.getTargetRegion3(character, humanoidRootPart, private.m1Data.slamAreaOfEffect, 0)
 	else
-		parts = detectionService.getTargetRegion3(character, humanoidRootPart, private.m1Data.regularAreaOfEffect, 3)
+		parts = detectionService.getTargetRegion3(character, humanoidRootPart, private.m1Data.regularAreaOfEffect, 4)
 	end
 	local characters = detectionService.getCharactersFromParts(parts)
 	return characters
